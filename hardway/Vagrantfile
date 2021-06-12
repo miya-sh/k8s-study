@@ -1,0 +1,80 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+MASTER_NUM = 2
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-20.04"
+  config.env.enable
+
+  (1..MASTER_NUM).each do |i|
+    config.vm.define "master-#{i}" do |node|
+      # Name shown in the GUI
+      node.vm.provider "virtualbox" do |vb|
+          vb.name = "kubernetes-master-#{i}"
+          vb.memory = 1024*2
+          vb.cpus = 2
+      end
+      ip_prefix = ENV["MASTER_IP_PREFIX"]
+      ip_subnet = ENV["MASTER_IP_SUBNET"]
+  
+      node_ip = "#{ip_prefix}.#{i}"
+      node.vm.hostname = "master-#{i}"
+      node.vm.network :private_network, ip: node_ip, netmask: ip_subnet
+
+      environ = {
+        "HOSTNAME" => node.vm.hostname,
+        "ADDR" => node_ip,
+        "ETCD_CLUSTER" => (1..MASTER_NUM).map { |x| "master-#{x}=https://#{ip_prefix}.#{x}:2380" } .join(','),
+        "ETCD_SERVERS" => (1..MASTER_NUM).map { |x| "https://#{ip_prefix}.#{x}:2379" } .join(','),
+        "KUBERNETES_PUB_ADDR" => ENV["KUBERNETES_PUB_ADDR"],
+      }
+      node.vm.provision "file", source: "./artifacts/#{node.vm.hostname}", destination: "$HOME"
+      # node.vm.provision "common", type: "shell", :path => "common.sh"
+      node.vm.provision "etcd", type: "shell", env: environ, :path => "initialize_etcd.sh"
+      node.vm.provision "master", type: "shell", env: environ, :path => "initialize_master.sh"
+    end
+  end
+
+  config.vm.define "loadbalancer" do |node|
+    node.vm.provider "virtualbox" do |vb|
+      vb.name = "kubernetes-lb"
+      vb.memory = 1024
+      vb.cpus = 1
+    end
+    ip_subnet = ENV["MASTER_IP_SUBNET"]
+    node.vm.hostname = "loadbalancer"
+    node.vm.network :public_network, ip: ENV["KUBERNETES_PUB_ADDR"], netmask: "255.255.255.0"
+    node.vm.network :private_network, ip: ENV["LB_PRIVATE_IP"], netmask: ip_subnet
+    # node.vm.network :forwarded_port, guest: 6443, host: 6443
+    environ = {
+      "KUBERNETES_PUB_ADDR" => ENV["KUBERNETES_PUB_ADDR"],
+      "BACKEND" => "todo"
+    }
+    node.vm.provision "common", type: "shell", :path => "common.sh"
+    node.vm.provision "haproxy", type: "shell", env: environ, :path => "initialize_haproxy.sh"
+  end
+
+  (1..2).each do |i|
+    config.vm.define "worker-#{i}" do |node|
+      node.vm.provider "virtualbox" do |vb|
+          vb.name = "kubernetes-worker-#{i}"
+          vb.memory = 1024*2
+          vb.cpus = 2
+      end
+      ip_prefix = ENV["WORKER_IP_PREFIX"]
+      ip_subnet = ENV["WORKER_IP_SUBNET"]
+
+      node_ip = "#{ip_prefix}.#{i}"
+      node.vm.hostname = "worker-#{i}"
+      node.vm.network :private_network, ip: node_ip, netmask: ip_subnet
+
+      environ = {
+        "HOSTNAME" => node.vm.hostname,
+      }
+      node.vm.provision "file", source: "./artifacts/#{node.vm.hostname}", destination: "$HOME"
+      # node.vm.provision "common", type: "shell", :path => "common.sh"
+      node.vm.provision "worker", type: "shell", env: environ, :path => "initialize_worker.sh"
+    end
+  end
+end
