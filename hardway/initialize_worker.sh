@@ -9,7 +9,7 @@ K8S_VER=v1.21.0
 wget -q --https-only --timestamping \
   https://storage.googleapis.com/kubernetes-release/release/${K8S_VER}/bin/linux/amd64/kubectl \
   https://storage.googleapis.com/kubernetes-release/release/${K8S_VER}/bin/linux/amd64/kube-proxy \
-  https://storage.googleapis.com/kubernetes-release/release/${K8S_VER}/bin/linux/amd64/kubelet
+  https://storage.googleapis.com/kubernetes-release/release/${K8S_VER}/bin/linux/amd64/kubelet \
   https://github.com/opencontainers/runc/releases/download/v1.0.0-rc93/runc.amd64
 wget -q --https-only --timestamping \
   https://github.com/kubernetes-sigs/cri-tools/releases/download/${K8S_VER}/crictl-v1.21.0-linux-amd64.tar.gz \

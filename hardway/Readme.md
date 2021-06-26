@@ -28,3 +28,18 @@
   ```
   vagrant up
   ```
+
+# k8s
+
+- CoreDNS
+  ```
+  kubectl apply -f https://storage.googleapis.com/kubernetes-the-hard-way/coredns-1.8.yaml
+  ```
+
+- Network Addon
+  https://kubernetes.io/ja/docs/concepts/cluster-administration/networking/
+  - Weave
+  https://www.weave.works/docs/net/latest/kubernetes/kube-addon/
+  ```
+  kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+  ```
