@@ -30,7 +30,7 @@ Vagrant.configure("2") do |config|
         "KUBERNETES_PUB_ADDR" => ENV["KUBERNETES_PUB_ADDR"],
       }
       node.vm.provision "file", source: "./artifacts/#{node.vm.hostname}", destination: "$HOME"
-      # node.vm.provision "common", type: "shell", :path => "common.sh"
+      node.vm.provision "common", type: "shell", :path => "common.sh"
       node.vm.provision "etcd", type: "shell", env: environ, :path => "initialize_etcd.sh"
       node.vm.provision "master", type: "shell", env: environ, :path => "initialize_master.sh"
     end
@@ -73,7 +73,7 @@ Vagrant.configure("2") do |config|
         "HOSTNAME" => node.vm.hostname,
       }
       node.vm.provision "file", source: "./artifacts/#{node.vm.hostname}", destination: "$HOME"
-      # node.vm.provision "common", type: "shell", :path => "common.sh"
+      node.vm.provision "common", type: "shell", :path => "common.sh"
       node.vm.provision "worker", type: "shell", env: environ, :path => "initialize_worker.sh"
     end
   end

@@ -13,6 +13,9 @@
     gvm use go1.16
     ```
 
+- kubectl
+  https://kubernetes.io/ja/docs/tasks/tools/install-kubectl/
+
 - cfssl
   build & install. see. https://github.com/cloudflare/cfssl
 
