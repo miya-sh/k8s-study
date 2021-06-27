@@ -21,15 +21,13 @@ backend kubernetes-master-nodes
     mode tcp
     balance roundrobin
     option tcp-check
-    server master-1 172.16.10.1:6443 check fall 3 rise 2
-    server master-2 172.16.10.2:6443 check fall 3 rise 2
+${BACKEND_MASTER}
 
 backend kubernetes-worker-nodes
     mode tcp
     balance roundrobin
     option tcp-check
-    server worker-1 172.16.20.1 check fall 3 rise 2
-    server worker-2 172.16.20.2 check fall 3 rise 2
+${BACKEND_WORKER}
 EOF
 
 systemctl restart haproxy

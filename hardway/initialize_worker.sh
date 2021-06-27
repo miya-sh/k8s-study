@@ -1,7 +1,5 @@
 #!/bin/bash
 
-POD_CIDR=10.200.0.0/16
-
 apt -y install socat conntrack ipset
 swapoff -a
 
@@ -42,7 +40,7 @@ cat <<EOF | tee /etc/cni/net.d/10-bridge.conf
     "ipam": {
         "type": "host-local",
         "ranges": [
-          [{"subnet": "${POD_CIDR}"}]
+          [{"subnet": "10.200.0.0/16"}]
         ],
         "routes": [{"dst": "0.0.0.0/0"}]
     }
@@ -108,7 +106,7 @@ authorization:
 clusterDomain: "cluster.local"
 clusterDNS:
   - "10.32.0.10"
-podCIDR: "${POD_CIDR}"
+podCIDR: "10.200.0.0/16"
 resolvConf: "/run/systemd/resolve/resolv.conf"
 runtimeRequestTimeout: "15m"
 tlsCertFile: "/var/lib/kubelet/${HOSTNAME}.pem"

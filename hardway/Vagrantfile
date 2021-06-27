@@ -1,13 +1,16 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-MASTER_NUM = 2
-
 Vagrant.configure("2") do |config|
   config.vm.box = "bento/ubuntu-20.04"
   config.env.enable
 
-  (1..MASTER_NUM).each do |i|
+  master_nodes = (1..2).map { |i| {"id" => i, "hostname" => "master-#{i}", "ip" => "#{ENV['MASTER_IP_PREFIX']}.#{i}"} }
+  worker_nodes = (1..2).map { |i| {"id" => i, "hostname" => "worker-#{i}", "ip" => "#{ENV['WORKER_IP_PREFIX']}.#{i}"} }
+  etc_hosts = (master_nodes + worker_nodes).map { |x| "#{x['ip']}  #{x['hostname']}" } .join("\n")
+
+  master_nodes.each do |cfg|
+    i = cfg["id"]
     config.vm.define "master-#{i}" do |node|
       # Name shown in the GUI
       node.vm.provider "virtualbox" do |vb|
@@ -15,22 +18,19 @@ Vagrant.configure("2") do |config|
           vb.memory = 1024*2
           vb.cpus = 2
       end
-      ip_prefix = ENV["MASTER_IP_PREFIX"]
-      ip_subnet = ENV["MASTER_IP_SUBNET"]
-  
-      node_ip = "#{ip_prefix}.#{i}"
-      node.vm.hostname = "master-#{i}"
-      node.vm.network :private_network, ip: node_ip, netmask: ip_subnet
 
+      node.vm.hostname = cfg["hostname"]
+      node.vm.network :private_network, ip: cfg["ip"], netmask: ENV["MASTER_IP_SUBNET"]
+      node.vm.provision "file", source: "./artifacts/#{node.vm.hostname}", destination: "$HOME"
+
+      node.vm.provision "common", type: "shell", env: {"HOSTS" => etc_hosts}, :path => "common.sh"
       environ = {
         "HOSTNAME" => node.vm.hostname,
-        "ADDR" => node_ip,
-        "ETCD_CLUSTER" => (1..MASTER_NUM).map { |x| "master-#{x}=https://#{ip_prefix}.#{x}:2380" } .join(','),
-        "ETCD_SERVERS" => (1..MASTER_NUM).map { |x| "https://#{ip_prefix}.#{x}:2379" } .join(','),
+        "ADDR" => cfg["ip"],
         "KUBERNETES_PUB_ADDR" => ENV["KUBERNETES_PUB_ADDR"],
+        "ETCD_CLUSTER" => master_nodes.map { |x| "#{x['hostname']}=https://#{x['ip']}:2380" } .join(','),
+        "ETCD_SERVERS" => master_nodes.map { |x| "https://#{x['ip']}:2379" } .join(','),
       }
-      node.vm.provision "file", source: "./artifacts/#{node.vm.hostname}", destination: "$HOME"
-      node.vm.provision "common", type: "shell", :path => "common.sh"
       node.vm.provision "etcd", type: "shell", env: environ, :path => "initialize_etcd.sh"
       node.vm.provision "master", type: "shell", env: environ, :path => "initialize_master.sh"
     end
@@ -42,38 +42,35 @@ Vagrant.configure("2") do |config|
       vb.memory = 1024
       vb.cpus = 1
     end
-    ip_subnet = ENV["MASTER_IP_SUBNET"]
     node.vm.hostname = "loadbalancer"
     node.vm.network :public_network, ip: ENV["KUBERNETES_PUB_ADDR"], netmask: "255.255.255.0"
-    node.vm.network :private_network, ip: ENV["LB_PRIVATE_IP"], netmask: ip_subnet
-    # node.vm.network :forwarded_port, guest: 6443, host: 6443
+    node.vm.network :private_network, ip: ENV["LB_PRIVATE_IP"], netmask: ENV["LB_PRIVATE_IP_SUBNET"]
     environ = {
       "KUBERNETES_PUB_ADDR" => ENV["KUBERNETES_PUB_ADDR"],
-      "BACKEND" => "todo"
+      "BACKEND_MASTER" => master_nodes.map { |x| "    server #{x['hostname']} #{x['ip']}:6443 check fall 3 rise 2" } .join("\n"),
+      "BACKEND_WORKER" => worker_nodes.map { |x| "    server #{x['hostname']} #{x['ip']} check fall 3 rise 2" } .join("\n"),
     }
-    node.vm.provision "common", type: "shell", :path => "common.sh"
+    node.vm.provision "common", type: "shell", env: {"HOSTS" => ""}, :path => "common.sh"
     node.vm.provision "haproxy", type: "shell", env: environ, :path => "initialize_haproxy.sh"
   end
 
-  (1..2).each do |i|
+  worker_nodes.each do |cfg|
+    i = cfg["id"]
     config.vm.define "worker-#{i}" do |node|
       node.vm.provider "virtualbox" do |vb|
           vb.name = "kubernetes-worker-#{i}"
           vb.memory = 1024*2
           vb.cpus = 2
       end
-      ip_prefix = ENV["WORKER_IP_PREFIX"]
-      ip_subnet = ENV["WORKER_IP_SUBNET"]
 
-      node_ip = "#{ip_prefix}.#{i}"
-      node.vm.hostname = "worker-#{i}"
-      node.vm.network :private_network, ip: node_ip, netmask: ip_subnet
+      node.vm.hostname = cfg["hostname"]
+      node.vm.network :private_network, ip: cfg["ip"], netmask: ENV["WORKER_IP_SUBNET"]
 
+      node.vm.provision "file", source: "./artifacts/#{node.vm.hostname}", destination: "$HOME"
+      node.vm.provision "common", type: "shell", env: {"HOSTS" => etc_hosts}, :path => "common.sh"
       environ = {
         "HOSTNAME" => node.vm.hostname,
       }
-      node.vm.provision "file", source: "./artifacts/#{node.vm.hostname}", destination: "$HOME"
-      node.vm.provision "common", type: "shell", :path => "common.sh"
       node.vm.provision "worker", type: "shell", env: environ, :path => "initialize_worker.sh"
     end
   end
