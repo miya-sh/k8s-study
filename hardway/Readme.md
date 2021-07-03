@@ -6,21 +6,16 @@
 # Setup
 
 - Go
-  - gvm (https://github.com/moovweb/gvm)
-  - use Go 1.16
-    ```
-    gvm install go1.16 -B
-    gvm use go1.16
-    ```
+  - install https://golang.org/doc/install
 
 - cfssl
-  build & install. see. https://github.com/cloudflare/cfssl
+  - build & install https://github.com/cloudflare/cfssl
 
 - vagrant plugin
-  - vagrant-env (https://github.com/gosuri/vagrant-env)
+  - vagrant-env: https://github.com/gosuri/vagrant-env
 
 - kubectl
-  https://kubernetes.io/ja/docs/tasks/tools/install-kubectl/
+  - install https://kubernetes.io/ja/docs/tasks/tools/install-kubectl/
 
 - generate keys and configs
   ```
